@@ -1,0 +1,10 @@
+node_modules/
+dist/
+public/icons/
+.cache/
+playwright-report/
+test-results/
+*.tsbuildinfo
+*.local
+.env*
+!.env.example
