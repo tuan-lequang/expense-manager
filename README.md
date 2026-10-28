@@ -39,12 +39,16 @@ npm run preview -- --port 4173 --strictPort
 - Lưu IndexedDB, sao lưu/khôi phục JSON có xem trước và xác nhận; xuất CSV. Khi khôi phục, thay thế dữ liệu hiện tại, không hợp nhất.
 - Bản mẫu tách khỏi dữ liệu cá nhân, chỉ ở bộ nhớ; thoát bản mẫu không thay đổi dữ liệu thật.
 - PWA có icon, manifest, cập nhật có thông báo và offline sau lần tải thành công đầu tiên.
+- Khôi phục JSON ngay màn hình đầu để chuyển dữ liệu sang link công khai/thiết bị mới; Cài đặt có nút cài PWA khi trình duyệt hỗ trợ, hướng dẫn Android/iPhone và trạng thái sẵn sàng offline.
+- Biểu mẫu sửa giao dịch, kế hoạch và tùy chọn kiểm tra thay đổi ở tab khác trước khi ghi, tránh dùng bản chỉnh cũ để ghi đè bản mới.
 
 ## Quy tắc ngân sách
 
 Tiền phân bổ ban đầu = số tiền đầu kỳ − khoản giữ lại. Đầu mỗi ngày, chia phần chưa chi cho số ngày còn lại, tính cả hôm nay; làm tròn xuống đến đồng.
 
 Trong ngày, giữ hạn mức đó và trừ chi ròng hôm nay. Khoản bổ sung ngân sách chủ động làm tính lại hạn mức; hoàn tiền giảm chi ròng và phải gắn đúng khoản chi gốc, không vượt tổng tiền đã chi. Sửa giao dịch quá khứ hoặc kế hoạch sẽ tính lại kết quả.
+
+Số tiền còn có thể chi hôm nay không vượt tiền thực còn lại của kế hoạch. Nếu trước đó đã âm toàn bộ ngân sách, hoàn tiền trước tiên bù phần âm; app không coi phần tiền chưa bù đủ đó là tiền có thể chi thêm.
 
 Ví dụ có 3.000.000 ₫, giữ lại 300.000 ₫, dùng 30 ngày: ban đầu 90.000 ₫/ngày. Chi 60.000 ₫ hôm đầu thì còn 30.000 ₫ hôm nay; sang hôm sau là `floor(2.640.000 / 29) = 91.034 ₫`.
 
@@ -57,6 +61,8 @@ Dữ liệu nằm trong trình duyệt, không có backend, đồng bộ đám m
 Xóa dữ liệu trang, dùng chế độ duyệt riêng tư hoặc mất thiết bị có thể làm mất dữ liệu. Xuất JSON định kỳ và giữ tệp ở nơi riêng tư. CSV dành cho bảng tính, không phải bản sao lưu để khôi phục toàn bộ. Tệp JSON tối đa 10 MB, định dạng phiên bản 1; dữ liệu được kiểm tra trước khi nhập. Các tab dùng IndexedDB và kiểm tra trạng thái trước khi ghi để hạn chế ghi đè dữ liệu cũ.
 
 ## Đưa lên hosting
+
+**Hướng dẫn từng bước:** [Tạo link công khai, dùng Chrome và cài trên Android/iPhone](docs/PUBLIC_DEPLOYMENT_AND_MOBILE.md). Có thể kết nối GitHub với Netlify để tự build và có link HTTPS, không cần giữ VS Code chạy. Repository đã có `netlify.toml`; bạn cần tạo project trong tài khoản hosting để có URL thực tế.
 
 `npm run build` tạo thư mục **dist/**, có thể phục vụ bằng static hosting tại gốc một tên miền, qua **HTTPS**. Chưa triển khai lên hosting công khai. Bản hiện tại dùng đường dẫn gốc `/`; cần cấu hình lại base/manifest nếu muốn đặt dưới đường dẫn con.
 

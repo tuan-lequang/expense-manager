@@ -10,6 +10,7 @@ import {
   money,
   niceDate,
   planSchema,
+  parseMoneyInput,
   TIMEZONE,
   type CategoryId,
   type Plan,
@@ -17,11 +18,6 @@ import {
   type Transaction,
 } from '../lib/model';
 import { CategoryIcon } from './Shared';
-
-function amountFromInput(value: string) {
-  const normalized = value.replace(/[.,\s]/g, '');
-  return /^\d+$/.test(normalized) ? Number(normalized) : NaN;
-}
 
 export function PlanForm({
   initial,
@@ -32,13 +28,14 @@ export function PlanForm({
   initial?: Plan;
   today: string;
   petName?: string;
-  onSave: (plan: Plan, petName: string) => Promise<void>;
+  onSave: (plan: Plan, petName: string, expected: Plan | null) => Promise<void>;
 }) {
+  const [basePlan] = useState(initial ?? null);
   const [name, setName] = useState(initial?.name ?? 'Một tháng an tâm');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
   const [reserve, setReserve] = useState(initial ? String(initial.reserve) : '0');
   const [mode, setMode] = useState<'days' | 'date'>('days');
-  const startDate = initial?.startDate ?? today;
+  const startDate = basePlan?.startDate ?? today;
   const [days, setDays] = useState(initial ? dayCount(startDate, initial.endDate) : 30);
   const [end, setEnd] = useState(initial?.endDate ?? addDays(today, 29));
   const [pet, setPet] = useState(petName);
@@ -51,15 +48,31 @@ export function PlanForm({
         ? addDays(startDate, days - 1)
         : startDate;
   const count = dayCount(startDate, endDate);
-  const available = amountFromInput(amount) - amountFromInput(reserve || '0');
+  const available = parseMoneyInput(amount) - parseMoneyInput(reserve || '0');
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    if (!name.trim()) {
+      setError('Đặt tên cho kế hoạch của bạn nhé.');
+      return;
+    }
+    const total = parseMoneyInput(amount);
+    const kept = parseMoneyInput(reserve || '0');
+    if (!Number.isSafeInteger(total) || total <= 0 || total > MAX_MONEY) {
+      setError(
+        'Nhập số tiền nguyên dương, tối đa 1.000 tỷ đồng. Dấu phân cách chỉ dùng cho nhóm nghìn, ví dụ 1.000.000.',
+      );
+      return;
+    }
+    if (!Number.isSafeInteger(kept) || kept < 0 || kept > MAX_MONEY) {
+      setError('Khoản giữ lại phải là số tiền nguyên không âm, ví dụ 300.000.');
+      return;
+    }
     const result = planSchema.safeParse({
       id: initial?.id ?? crypto.randomUUID(),
       name,
-      amount: amountFromInput(amount),
-      reserve: amountFromInput(reserve || '0'),
+      amount: total,
+      reserve: kept,
       startDate,
       endDate,
       timezone: TIMEZONE,
@@ -78,7 +91,7 @@ export function PlanForm({
     }
     setBusy(true);
     try {
-      await onSave(result.data, pet.trim());
+      await onSave(result.data, pet.trim(), basePlan);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Chưa lưu được kế hoạch.');
     } finally {
@@ -258,7 +271,7 @@ export function TransactionForm({
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
-    const value = amountFromInput(amount);
+    const value = parseMoneyInput(amount);
     if (!Number.isSafeInteger(value) || value <= 0 || value > MAX_MONEY) {
       setError('Nhập số tiền nguyên dương, tối đa 1.000 tỷ đồng.');
       return;

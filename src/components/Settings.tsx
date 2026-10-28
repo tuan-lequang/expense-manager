@@ -1,7 +1,6 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   ArrowDownToLine,
-  ArrowUpFromLine,
   Cat as CatIcon,
   Check,
   Download,
@@ -9,7 +8,10 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { money, niceDate, parseBackup, toCsv, type Snapshot } from '../lib/model';
+import { money, niceDate, toCsv, type Snapshot } from '../lib/model';
+import BackupImport from './BackupImport';
+import InstallHelp from './InstallHelp';
+import type { InstallState, OfflineState } from '../lib/useInstall';
 
 export function downloadFile(content: string, filename: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -29,44 +31,45 @@ export default function Settings({
   onImport,
   onReset,
   notify,
+  installation,
+  offline,
 }: {
   data: Snapshot;
   today: string;
   isDemo: boolean;
-  onSave: (settings: Snapshot['settings']) => Promise<void>;
+  onSave: (settings: Snapshot['settings'], expected: Snapshot['settings']) => Promise<void>;
   onEditPlan: () => void;
   onImport: (data: Snapshot) => void;
   onReset: () => void;
   notify: (message: string) => void;
+  installation: InstallState;
+  offline: OfflineState;
 }) {
   const [settings, setSettings] = useState(data.settings);
+  const [baseSettings, setBaseSettings] = useState(data.settings);
+  const dirty = JSON.stringify(settings) !== JSON.stringify(baseSettings);
+  useEffect(() => {
+    if (!dirty) {
+      setSettings(data.settings);
+      setBaseSettings(data.settings);
+    }
+  }, [data.settings, dirty]);
   const [busy, setBusy] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (!settings.petName.trim()) {
+      notify('Tên thú cưng không được để trống.');
+      return;
+    }
     setBusy(true);
     try {
-      await onSave(settings);
+      await onSave(settings, baseSettings);
+      setBaseSettings(settings);
       notify('Đã lưu tùy chọn của bạn.');
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Chưa lưu được tùy chọn.');
     } finally {
       setBusy(false);
-    }
-  }
-  async function importFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (isDemo) {
-      notify('Thoát bản mẫu trước khi khôi phục dữ liệu thật.');
-      return;
-    }
-    try {
-      if (file.size > 10 * 1024 * 1024) throw new Error('Tệp sao lưu tối đa 10 MB.');
-      onImport(parseBackup(await file.text(), today));
-    } catch (error) {
-      notify(error instanceof Error ? error.message : 'Không đọc được tệp.');
     }
   }
   return (
@@ -145,6 +148,7 @@ export default function Settings({
           </button>
         </form>
       </section>
+      <InstallHelp installation={installation} offline={offline} />
       <section className="panel backup-panel">
         <div className="section-heading">
           <h2>Dữ liệu & sao lưu</h2>
@@ -174,15 +178,7 @@ export default function Settings({
             <strong>Sao lưu JSON</strong>
             <small>Giữ toàn bộ kế hoạch và giao dịch</small>
           </button>
-          <button
-            className="backup-action"
-            disabled={isDemo}
-            onClick={() => fileRef.current?.click()}
-          >
-            <ArrowUpFromLine size={22} />
-            <strong>Khôi phục JSON</strong>
-            <small>Xem trước trước khi thay thế dữ liệu</small>
-          </button>
+          <BackupImport today={today} onImport={onImport} notify={notify} disabled={isDemo} />
           <button
             className="backup-action"
             onClick={() =>
@@ -198,14 +194,6 @@ export default function Settings({
             <small>Mở bằng Excel hoặc Google Sheets</small>
           </button>
         </div>
-        <input
-          ref={fileRef}
-          className="sr-only"
-          aria-label="Tệp sao lưu JSON"
-          type="file"
-          accept="application/json,.json"
-          onChange={importFile}
-        />
         <div className="delete-data">
           <div>
             <strong>Bắt đầu lại từ đầu</strong>

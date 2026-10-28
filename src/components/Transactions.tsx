@@ -24,10 +24,10 @@ export default function Transactions({
   const [page, setPage] = useState(0);
   const normalize = (value: string) =>
     value
+      .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replaceAll('đ', 'd')
-      .toLowerCase();
+      .replaceAll('đ', 'd');
   const filtered = data.transactions
     .filter(
       (t) =>

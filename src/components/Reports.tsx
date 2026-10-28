@@ -7,6 +7,7 @@ import {
   isDate,
   money,
   niceDate,
+  planForecast,
   type Snapshot,
 } from '../lib/model';
 import { CategoryChart, SpendingChart } from './Charts';
@@ -50,14 +51,7 @@ export default function Reports({
   const refunds = transactions.filter((t) => t.kind === 'refund').reduce((s, t) => s + t.amount, 0);
   const net = expenses - refunds;
   const days = invalid ? 0 : dayCount(start, end);
-  const current = budgetForDay(plan, data.transactions, today);
-  const elapsed = Math.max(0, dayCount(plan.startDate, end));
-  const forecast =
-    elapsed >= 3 && data.transactions.some((t) => t.kind === 'expense' && t.date <= today)
-      ? Math.round(
-          current.remaining - (current.netSpent / elapsed) * Math.max(0, current.daysLeft - 1),
-        )
-      : null;
+  const forecast = planForecast(plan, data.transactions, today);
   const chartStart = !invalid && dayCount(start, end) > 31 ? addDays(end, -30) : start;
   const rows = invalid
     ? []

@@ -1310,6 +1310,133 @@ main:focus {
   text-align: center;
 }
 
+.restore-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  color: #646e5c;
+  font-size: 10px;
+}
+.install-panel {
+  grid-column: 1/-1;
+}
+.install-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+.install-summary strong,
+.offline-readiness strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4b654e;
+}
+.install-summary p,
+.offline-readiness p {
+  font-size: 11px;
+  color: #646e5c;
+  margin-top: 7px;
+  line-height: 1.9;
+}
+.install-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: #e7eee1;
+  color: #4b654e;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.install-instructions {
+  border: 1px solid #e5e9de;
+  border-radius: 11px;
+  margin-top: 18px;
+  padding: 13px 15px;
+  color: #596b50;
+  font-size: 11px;
+  line-height: 1.9;
+}
+.install-instructions summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.install-instructions ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin-top: 13px;
+}
+.install-instructions li {
+  margin: 9px 0;
+}
+.install-instructions > p {
+  margin-top: 9px;
+}
+.offline-readiness {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 18px;
+  background: #f0f3ea;
+  border-radius: 11px;
+  color: #617457;
+}
+.offline-readiness > svg {
+  margin-top: 2px;
+}
+.install-footnote {
+  font-size: 10px;
+  color: #646e5c;
+  margin-top: 15px;
+  line-height: 1.9;
+}
+.install-panel > .info-box {
+  margin-top: 14px;
+}
+@media (max-width: 760px) {
+  .install-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .install-summary > .button {
+    width: 100%;
+  }
+  .install-instructions {
+    font-size: 11px;
+  }
+  .install-summary p,
+  .offline-readiness p {
+    font-size: 11px;
+  }
+}
+
+.hero-value {
+  font-size: inherit;
+  font-weight: inherit;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.hero-value.large-money {
+  font-size: clamp(21px, 6.6vw, 36px);
+}
+.budget-progress-labels {
+  flex-wrap: wrap;
+  row-gap: 7px;
+}
+.budget-progress-labels > span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.pet-content p {
+  overflow-wrap: anywhere;
+}
 /* Transactions and reports */
 .transactions-panel {
   padding: 24px 26px;
@@ -2801,7 +2928,7 @@ main:focus {
     font-size: 11px;
   }
   .pet-content > div {
-    max-width: 61%;
+    max-width: calc(100% - 126px);
     padding-bottom: 10px;
   }
   .pet-content h2 {

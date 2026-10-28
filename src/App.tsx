@@ -30,9 +30,11 @@ import { SpendingChart } from './components/Charts';
 import Transactions from './components/Transactions';
 import Reports from './components/Reports';
 import Settings from './components/Settings';
+import BackupImport from './components/BackupImport';
 import { loadSnapshot, saveSnapshot } from './lib/db';
 import {
   addDays,
+  assertUnchanged,
   budgetForDay,
   dayCount,
   emptySnapshot,
@@ -45,6 +47,7 @@ import {
   type Transaction,
 } from './lib/model';
 import { demoSnapshot } from './lib/demo';
+import { useInstall, type OfflineState } from './lib/useInstall';
 
 type Page = 'today' | 'transactions' | 'reports' | 'settings';
 const navigation = [
@@ -92,12 +95,31 @@ export default function App() {
   );
   const mutation = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
+  const installation = useInstall();
+  const [offlineState, setOfflineState] = useState<OfflineState>(
+    import.meta.env.DEV || !('serviceWorker' in navigator) ? 'unavailable' : 'preparing',
+  );
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({
+    onRegisteredSW(_url, registration) {
+      if (registration?.active) setOfflineState('ready');
+    },
+    onOfflineReady() {
+      setOfflineState('ready');
+    },
+    onRegisterError() {
+      setOfflineState('error');
+    },
+  });
   const data = demo ?? saved;
+  const isDemo = demo !== null;
   const reduceMotion = systemReduce || data.settings.reduceMotion;
+
+  useEffect(() => {
+    setModal(null);
+  }, [data.plan?.id, isDemo]);
 
   useEffect(() => {
     const subscription = liveQuery(loadSnapshot).subscribe({
@@ -165,20 +187,36 @@ export default function App() {
   function navigate(next: Page) {
     setPage(next);
     window.scrollTo({ top: 0, behavior: 'instant' });
-    requestAnimationFrame(() => mainRef.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      mainRef.current?.focus({ preventScroll: true });
+    });
   }
   function openModal(value: ActiveModal) {
     setConfirmError('');
     setConfirmText('');
     setModal(value);
   }
-  async function savePlan(plan: Plan, petName: string) {
-    await update({ ...data, plan, settings: { ...data.settings, petName } });
+  async function savePlan(plan: Plan, petName: string, expected: Plan | null) {
+    assertUnchanged(expected, data.plan, 'Kế hoạch');
+    await update({
+      ...data,
+      plan,
+      settings: expected ? data.settings : { ...data.settings, petName },
+    });
     setModal(null);
+    if (!expected) navigate('today');
     setToast('Kế hoạch đã sẵn sàng. Mình bắt đầu nhẹ nhàng nhé!');
   }
   async function saveTransaction(tx: Transaction) {
     if (tx.date > today) throw new Error('Chỉ ghi giao dịch đến hôm nay.');
+    if (modal?.type === 'transaction' && modal.transaction) {
+      assertUnchanged(
+        modal.transaction,
+        data.transactions.find((t) => t.id === tx.id),
+        'Giao dịch',
+      );
+    }
     await update({
       ...data,
       transactions: [...data.transactions.filter((t) => t.id !== tx.id), tx],
@@ -206,8 +244,12 @@ export default function App() {
     openModal({ type: 'transaction', transaction });
   const deleteTransaction = (transaction: Transaction) =>
     openModal({ type: 'delete', transaction });
-  const isDemo = demo !== null;
   const budget = data.plan ? budgetForDay(data.plan, data.transactions, today) : null;
+  const heroValue = budget
+    ? budget.expired || budget.upcoming
+      ? budget.remaining
+      : Math.abs(budget.todayRemaining)
+    : 0;
 
   if (loading)
     return (
@@ -281,6 +323,15 @@ export default function App() {
                   Khám phá bản mẫu
                   <ArrowRight size={15} />
                 </button>
+              </div>
+              <div className="restore-entry">
+                <span>Đã có dữ liệu từ thiết bị khác?</span>
+                <BackupImport
+                  compact
+                  today={today}
+                  onImport={(imported) => openModal({ type: 'import', data: imported })}
+                  notify={setToast}
+                />
               </div>
             </div>
           </main>
@@ -459,11 +510,11 @@ export default function App() {
                       <div
                         className={`hero-amount ${budget.todayRemaining < 0 ? 'over-budget' : ''}`}
                       >
-                        {money(
-                          budget.expired || budget.upcoming
-                            ? budget.remaining
-                            : Math.abs(budget.todayRemaining),
-                        )}
+                        <strong
+                          className={`hero-value ${Math.abs(heroValue) >= 1_000_000_000 ? 'large-money' : ''}`}
+                        >
+                          {money(heroValue)}
+                        </strong>
                         <span>{budget.active ? '/ hôm nay' : '/ kế hoạch'}</span>
                       </div>
                       {budget.active ? (
@@ -684,11 +735,16 @@ export default function App() {
                   data={data}
                   today={today}
                   isDemo={isDemo}
-                  onSave={async (settings) => update({ ...data, settings })}
+                  onSave={async (settings, expected) => {
+                    assertUnchanged(expected, data.settings, 'Tùy chọn');
+                    await update({ ...data, settings });
+                  }}
                   onEditPlan={() => openModal({ type: 'plan' })}
                   onImport={(imported) => openModal({ type: 'import', data: imported })}
                   onReset={() => openModal({ type: 'reset' })}
                   notify={setToast}
+                  installation={installation}
+                  offline={offlineState}
                 />
               )}
               <footer className="page-footer">
@@ -715,7 +771,7 @@ export default function App() {
           </nav>
         </div>
       )}
-      {modal?.type === 'transaction' && (
+      {modal?.type === 'transaction' && data.plan && (
         <Modal
           title={modal.transaction ? 'Chỉnh một khoản đã ghi' : 'Ghi một khoản nhỏ'}
           subtitle="Chỉ vài giây, để chiếc ví rõ ràng hơn."
@@ -729,7 +785,7 @@ export default function App() {
           />
         </Modal>
       )}
-      {modal?.type === 'plan' && (
+      {modal?.type === 'plan' && data.plan && (
         <Modal
           title="Chăm chút lại kế hoạch"
           subtitle="Các giao dịch đã ghi được giữ nguyên. Hạn mức sẽ tính lại theo kế hoạch mới."
@@ -763,6 +819,11 @@ export default function App() {
               disabled={saving}
               onClick={() =>
                 confirmAction(async () => {
+                  assertUnchanged(
+                    modal.transaction,
+                    data.transactions.find((t) => t.id === modal.transaction.id),
+                    'Giao dịch',
+                  );
                   await update({
                     ...data,
                     transactions: data.transactions.filter(

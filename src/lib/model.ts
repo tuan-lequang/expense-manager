@@ -22,6 +22,17 @@ export const categorySchema = z.enum([
 ]);
 export const MAX_MONEY = 1_000_000_000_000;
 
+export function parseMoneyInput(input: string) {
+  const compact = input.replace(/\s/g, '');
+  const valid =
+    /^\d+$/.test(compact) ||
+    /^\d{1,3}(\.\d{3})+$/.test(compact) ||
+    /^\d{1,3}(,\d{3})+$/.test(compact);
+  if (!valid) return NaN;
+  const value = Number(compact.replace(/[.,]/g, ''));
+  return Number.isSafeInteger(value) ? value : NaN;
+}
+
 export function isDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T12:00:00Z`);
@@ -170,13 +181,32 @@ export function budgetForDay(plan: Plan, transactions: Transaction[], day: strin
     allowance,
     todayNet,
     netSpent,
-    todayRemaining: active ? allowance - todayNet : 0,
+    // A refund can reduce an old deficit without creating spendable cash yet.
+    todayRemaining: active ? Math.min(allowance - todayNet, Math.max(0, remaining)) : 0,
     nextAllowance: active && daysLeft > 1 ? Math.max(0, Math.floor(remaining / (daysLeft - 1))) : 0,
     available:
       plan.amount -
       plan.reserve +
       relevant.filter((t) => t.kind === 'topup').reduce((s, t) => s + t.amount, 0),
   };
+}
+
+export function planForecast(plan: Plan, transactions: Transaction[], today: string) {
+  const asOf = today < plan.endDate ? today : plan.endDate;
+  const elapsed = Math.max(0, dayCount(plan.startDate, asOf));
+  if (elapsed < 3 || !transactions.some((t) => t.kind === 'expense' && t.date <= asOf)) return null;
+  const current = budgetForDay(plan, transactions, today);
+  return Math.round(
+    current.remaining - (current.netSpent / elapsed) * Math.max(0, current.daysLeft - 1),
+  );
+}
+
+export function assertUnchanged<T>(expected: T, current: T, label: string) {
+  if (JSON.stringify(expected) !== JSON.stringify(current)) {
+    throw new Error(
+      `${label} đã thay đổi ở tab khác. Đóng và mở lại biểu mẫu để dùng dữ liệu mới; thay đổi mới chưa bị ghi đè.`,
+    );
+  }
 }
 
 export function parseBackup(text: string, today = todayInZone()): Snapshot {
