@@ -19,6 +19,7 @@ import {
   niceDate,
   shortMoney,
   money,
+  netSpending,
   type Plan,
   type Transaction,
 } from '../lib/model';
@@ -40,7 +41,11 @@ export function SpendingChart({
   const data = Array.from({ length }, (_, i) => {
     const date = addDays(end, i - length + 1);
     const day = budgetForDay(plan, transactions, date);
-    return { date: niceDate(date), spent: day.todayNet, limit: day.allowance };
+    return {
+      date: niceDate(date),
+      spent: netSpending(transactions.filter((t) => t.date === date)),
+      limit: day.active ? day.allowance : null,
+    };
   });
   return (
     <div

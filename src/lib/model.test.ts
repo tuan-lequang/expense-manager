@@ -144,20 +144,36 @@ describe('dates and timezone', () => {
 describe('backup and financial integrity', () => {
   it('round-trips complete data and rejects malformed/unsupported backup files', () => {
     const value = snapshot([tx()]);
-    expect(parseBackup(JSON.stringify(value), '2026-10-30')).toEqual(value);
+    expect(parseBackup(JSON.stringify(value))).toEqual(value);
     expect(() => parseBackup('no-json')).toThrow('JSON');
     expect(() => parseBackup(JSON.stringify({ ...value, version: 2 }))).toThrow();
-    expect(() =>
-      parseBackup(JSON.stringify(snapshot([tx({ date: '2026-10-03' })])), '2026-10-02'),
-    ).toThrow('tương lai');
+    const scheduled = snapshot([tx({ date: '2026-10-03' })]);
+    expect(parseBackup(JSON.stringify(scheduled))).toEqual(scheduled);
   });
-  it('rejects duplicate IDs, invalid plan boundaries and out-of-period transactions', () => {
+  it('rejects duplicate IDs and invalid plans while allowing historical transactions outside the period', () => {
     expect(snapshotSchema.safeParse(snapshot([tx(), tx()])).success).toBe(false);
     expect(
       snapshotSchema.safeParse({ ...snapshot(), plan: { ...plan, reserve: plan.amount } }).success,
     ).toBe(false);
-    expect(snapshotSchema.safeParse(snapshot([tx({ date: '2026-09-30' })])).success).toBe(false);
+    expect(snapshotSchema.safeParse(snapshot([tx({ date: '2026-09-30' })])).success).toBe(true);
     expect(snapshotSchema.safeParse(snapshot([tx({ amount: 1.5 })])).success).toBe(false);
+  });
+  it('keeps scheduled funds and expenses out of today until their date arrives', () => {
+    const records = [
+      tx({ id: 'past', date: '2026-09-30' }),
+      tx({ id: 'planned', date: '2026-10-02' }),
+      tx({ id: 'funds', date: '2026-10-02', kind: 'topup', amount: 300000 }),
+    ];
+    expect(budgetForDay(plan, records, '2026-10-01')).toMatchObject({
+      remaining: 2700000,
+      netSpent: 0,
+      todayRemaining: 90000,
+    });
+    expect(budgetForDay(plan, records, '2026-10-02')).toMatchObject({
+      remaining: 2940000,
+      netSpent: 60000,
+      todayRemaining: 43448,
+    });
   });
   it('requires a valid refund source, matching category, and limits total refunds', () => {
     const refund = tx({ id: 'r', kind: 'refund', amount: 40_000, refundOf: 'e1' });

@@ -14,7 +14,14 @@ import {
   Utensils,
   type LucideIcon,
 } from 'lucide-react';
-import { categoryFor, money, niceDate, type CategoryId, type Transaction } from '../lib/model';
+import {
+  categoryFor,
+  money,
+  niceDate,
+  type CategoryId,
+  type Plan,
+  type Transaction,
+} from '../lib/model';
 
 const icons: Record<CategoryId, LucideIcon> = {
   food: Utensils,
@@ -55,10 +62,14 @@ export function EmptyState({
   );
 }
 export function TransactionList({
+  today,
+  plan,
   transactions,
   onEdit,
   onDelete,
 }: {
+  today: string;
+  plan: Plan;
   transactions: Transaction[];
   onEdit: (tx: Transaction) => void;
   onDelete: (tx: Transaction) => void;
@@ -98,6 +109,10 @@ export function TransactionList({
                     : category.name}
                 <i>·</i>
                 {niceDate(tx.date)}
+                {tx.date > today && <small className="transaction-badge">Dự kiến</small>}
+                {(tx.date < plan.startDate || tx.date > plan.endDate) && (
+                  <small className="transaction-badge outside-period">Ngoài kỳ</small>
+                )}
               </span>
             </div>
             <strong className={`transaction-amount ${tx.kind !== 'expense' ? 'positive' : ''}`}>

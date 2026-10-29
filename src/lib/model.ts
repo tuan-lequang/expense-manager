@@ -92,8 +92,6 @@ export const snapshotSchema = z
       if (ids.has(tx.id)) fail('Tệp có mã giao dịch trùng nhau.');
       ids.add(tx.id);
       total += tx.amount;
-      if (data.plan && (tx.date < data.plan.startDate || tx.date > data.plan.endDate))
-        fail('Giao dịch nằm ngoài thời gian kế hoạch.');
       if (tx.kind !== 'refund' && tx.refundOf) fail('Chỉ khoản hoàn tiền mới có giao dịch gốc.');
       if (tx.kind === 'refund') {
         const original = expenses.get(tx.refundOf ?? '');
@@ -150,6 +148,11 @@ export const niceDate = (date: string, options?: Intl.DateTimeFormatOptions) =>
     ...options,
   }).format(new Date(`${date}T05:00:00Z`));
 export const signedAmount = (tx: Transaction) => (tx.kind === 'expense' ? -tx.amount : tx.amount);
+export const netSpending = (transactions: Transaction[]) =>
+  transactions.reduce(
+    (sum, tx) => sum + (tx.kind === 'expense' ? tx.amount : tx.kind === 'refund' ? -tx.amount : 0),
+    0,
+  );
 
 export function budgetForDay(plan: Plan, transactions: Transaction[], day: string) {
   const relevant = transactions.filter(
@@ -194,7 +197,11 @@ export function budgetForDay(plan: Plan, transactions: Transaction[], day: strin
 export function planForecast(plan: Plan, transactions: Transaction[], today: string) {
   const asOf = today < plan.endDate ? today : plan.endDate;
   const elapsed = Math.max(0, dayCount(plan.startDate, asOf));
-  if (elapsed < 3 || !transactions.some((t) => t.kind === 'expense' && t.date <= asOf)) return null;
+  if (
+    elapsed < 3 ||
+    !transactions.some((t) => t.kind === 'expense' && t.date >= plan.startDate && t.date <= asOf)
+  )
+    return null;
   const current = budgetForDay(plan, transactions, today);
   return Math.round(
     current.remaining - (current.netSpent / elapsed) * Math.max(0, current.daysLeft - 1),
@@ -209,7 +216,7 @@ export function assertUnchanged<T>(expected: T, current: T, label: string) {
   }
 }
 
-export function parseBackup(text: string, today = todayInZone()): Snapshot {
+export function parseBackup(text: string): Snapshot {
   if (new TextEncoder().encode(text).length > 10 * 1024 * 1024)
     throw new Error('Tệp sao lưu tối đa 10 MB.');
   let json: unknown;
@@ -220,10 +227,6 @@ export function parseBackup(text: string, today = todayInZone()): Snapshot {
   }
   const result = snapshotSchema.safeParse(json);
   if (!result.success) throw new Error(result.error.issues[0].message);
-  if (result.data.transactions.some((t) => t.date > today))
-    throw new Error(
-      'Tệp chứa giao dịch trong tương lai. Kiểm tra ngày trên thiết bị hoặc tệp sao lưu.',
-    );
   return result.data;
 }
 

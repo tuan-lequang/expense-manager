@@ -178,7 +178,7 @@ export default function Settings({
             <strong>Sao lưu JSON</strong>
             <small>Giữ toàn bộ kế hoạch và giao dịch</small>
           </button>
-          <BackupImport today={today} onImport={onImport} notify={notify} disabled={isDemo} />
+          <BackupImport onImport={onImport} notify={notify} disabled={isDemo} />
           <button
             className="backup-action"
             onClick={() =>

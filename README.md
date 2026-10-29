@@ -41,6 +41,7 @@ npm run preview -- --port 4173 --strictPort
 - PWA có icon, manifest, cập nhật có thông báo và offline sau lần tải thành công đầu tiên.
 - Khôi phục JSON ngay màn hình đầu để chuyển dữ liệu sang link công khai/thiết bị mới; Cài đặt có nút cài PWA khi trình duyệt hỗ trợ, hướng dẫn Android/iPhone và trạng thái sẵn sàng offline.
 - Biểu mẫu sửa giao dịch, kế hoạch và tùy chọn kiểm tra thay đổi ở tab khác trước khi ghi, tránh dùng bản chỉnh cũ để ghi đè bản mới.
+- Nút thêm giao dịch dùng chung cả bốn tab: trên thanh trên cùng ở laptop và nổi phía trên điều hướng ở điện thoại. Khoảng cuộn dọc ổn định trên laptop giúp trang ngắn/dài không làm nút dịch ngang.
 
 ## Quy tắc ngân sách
 
@@ -52,7 +53,9 @@ Số tiền còn có thể chi hôm nay không vượt tiền thực còn lại 
 
 Ví dụ có 3.000.000 ₫, giữ lại 300.000 ₫, dùng 30 ngày: ban đầu 90.000 ₫/ngày. Chi 60.000 ₫ hôm đầu thì còn 30.000 ₫ hôm nay; sang hôm sau là `floor(2.640.000 / 29) = 91.034 ₫`.
 
-Cho phép ghi chi vượt hạn mức. Kế hoạch hết hạn không tự mở kỳ mới hoặc tự chuyển số dư; người dùng có thể điều chỉnh kế hoạch và vẫn ghi bổ sung các giao dịch thuộc kỳ. Giao dịch trong tương lai không được chấp nhận. Báo cáo chỉ tính ngày đến hiện tại; biểu đồ theo ngày hiển thị tối đa 31 ngày cuối trong khoảng chọn, còn số tổng tính trên toàn khoảng.
+Cho phép ghi chi vượt hạn mức và chọn ngày quá khứ, hôm nay hoặc tương lai. Khoản tương lai có nhãn **Dự kiến**, chỉ tính vào chi tiêu thực tế khi đến ngày; giao dịch ngoài kỳ có nhãn **Ngoài kỳ**, vẫn lưu trong lịch sử nhưng không thay đổi ngân sách kỳ đang chọn. Không tự đổi ngày bắt đầu/kết thúc kế hoạch khi ghi giao dịch.
+
+Kế hoạch hết hạn không tự mở kỳ mới hoặc tự chuyển số dư. Báo cáo thực tế chỉ tính ngày đến hiện tại; khoảng tùy chọn có thể xem lịch sử ngoài kỳ, còn biểu đồ chỉ có đường hạn mức trong kỳ ngân sách. Biểu đồ theo ngày hiển thị tối đa 31 ngày cuối trong khoảng chọn, số tổng tính trên toàn khoảng.
 
 ## Dữ liệu và quyền riêng tư
 

@@ -255,7 +255,7 @@ export function TransactionForm({
   const [kind, setKind] = useState<Transaction['kind']>(initial?.kind ?? 'expense');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
   const [category, setCategory] = useState<CategoryId>(initial?.category ?? 'food');
-  const [date, setDate] = useState(initial?.date ?? (today > plan.endDate ? plan.endDate : today));
+  const [date, setDate] = useState(initial?.date ?? today);
   const [note, setNote] = useState(initial?.note ?? '');
   const [refundOf, setRefundOf] = useState(initial?.refundOf ?? '');
   const [error, setError] = useState('');
@@ -276,8 +276,8 @@ export function TransactionForm({
       setError('Nhập số tiền nguyên dương, tối đa 1.000 tỷ đồng.');
       return;
     }
-    if (date > today) {
-      setError('Chỉ ghi giao dịch đến hôm nay.');
+    if (!isDate(date)) {
+      setError('Chọn ngày giao dịch hợp lệ.');
       return;
     }
     if (kind === 'refund' && !original) {
@@ -384,22 +384,34 @@ export function TransactionForm({
         <div className="info-box">
           <Info size={18} />
           <span>
-            Khoản này bổ sung trực tiếp vào ngân sách và tính lại hạn mức hôm nay. Không tính là chi
-            tiêu.
+            Khoản này bổ sung vào ngân sách khi đến ngày đã chọn và ngày đó thuộc kỳ kế hoạch. Không
+            tính là chi tiêu.
           </span>
         </div>
       )}
       <label>
         Ngày giao dịch
         <input
+          aria-label="Ngày giao dịch"
+          aria-describedby="transaction-date-help"
           type="date"
           required
           value={date}
-          min={plan.startDate}
-          max={today < plan.endDate ? today : plan.endDate}
           onChange={(e) => setDate(e.target.value)}
         />
+        <small id="transaction-date-help">Có thể ghi ngày quá khứ, hôm nay hoặc tương lai.</small>
       </label>
+      {isDate(date) && date > today && (
+        <p className="info-box">
+          Giao dịch được lưu dưới dạng dự kiến, chỉ tính vào chi tiêu thực tế khi đến ngày đã chọn.
+        </p>
+      )}
+      {isDate(date) && (date < plan.startDate || date > plan.endDate) && (
+        <p className="info-box">
+          Ngày này nằm ngoài kỳ ngân sách {niceDate(plan.startDate)} — {niceDate(plan.endDate)}.
+          Giao dịch vẫn được lưu trong lịch sử, không thay đổi ngân sách kỳ này.
+        </p>
+      )}
       <label>
         Ghi chú <span className="optional">· tùy chọn</span>
         <input

@@ -209,7 +209,6 @@ export default function App() {
     setToast('Kế hoạch đã sẵn sàng. Mình bắt đầu nhẹ nhàng nhé!');
   }
   async function saveTransaction(tx: Transaction) {
-    if (tx.date > today) throw new Error('Chỉ ghi giao dịch đến hôm nay.');
     if (modal?.type === 'transaction' && modal.transaction) {
       assertUnchanged(
         modal.transaction,
@@ -223,11 +222,15 @@ export default function App() {
     });
     setModal(null);
     setToast(
-      tx.kind === 'topup'
-        ? 'Đã thêm tiền và tính lại hạn mức.'
-        : tx.kind === 'refund'
-          ? 'Đã ghi hoàn tiền vào ngân sách.'
-          : 'Đã lưu khoản chi. Mỗi chút đều có ý nghĩa!',
+      tx.date > today
+        ? `Đã lưu giao dịch dự kiến ngày ${niceDate(tx.date, { year: 'numeric' })}.`
+        : data.plan && (tx.date < data.plan.startDate || tx.date > data.plan.endDate)
+          ? 'Đã lưu giao dịch vào lịch sử ngoài kỳ ngân sách.'
+          : tx.kind === 'topup'
+            ? 'Đã thêm tiền và tính lại hạn mức.'
+            : tx.kind === 'refund'
+              ? 'Đã ghi hoàn tiền vào ngân sách.'
+              : 'Đã lưu khoản chi. Mỗi chút đều có ý nghĩa!',
     );
   }
   async function confirmAction(action: () => Promise<void>) {
@@ -328,7 +331,6 @@ export default function App() {
                 <span>Đã có dữ liệu từ thiết bị khác?</span>
                 <BackupImport
                   compact
-                  today={today}
                   onImport={(imported) => openModal({ type: 'import', data: imported })}
                   notify={setToast}
                 />
@@ -414,6 +416,10 @@ export default function App() {
                   {niceDate(today, { weekday: 'short', year: 'numeric' })}
                 </span>
                 <span className="avatar small-avatar">B</span>
+                <button className="button primary add-transaction" onClick={addTransaction}>
+                  <Plus size={18} />
+                  Thêm giao dịch
+                </button>
               </div>
             </header>
             {isDemo && (
@@ -476,12 +482,6 @@ export default function App() {
                           : 'Để Mơ trở thành người bạn phù hợp hơn với bạn.'}
                   </p>
                 </div>
-                {page !== 'settings' && (
-                  <button className="button primary add-transaction" onClick={addTransaction}>
-                    <Plus size={18} />
-                    Thêm giao dịch
-                  </button>
-                )}
               </div>
               {page === 'today' && budget && (
                 <>
@@ -643,7 +643,13 @@ export default function App() {
                           <ArrowRight size={14} />
                         </button>
                       </div>
-                      {data.transactions.some((t) => t.kind !== 'topup') ? (
+                      {data.transactions.some(
+                        (t) =>
+                          t.kind !== 'topup' &&
+                          t.date <= today &&
+                          t.date >= data.plan!.startDate &&
+                          t.date <= data.plan!.endDate,
+                      ) ? (
                         <>
                           <div className="chart-legend">
                             <span>
@@ -692,6 +698,8 @@ export default function App() {
                       </div>
                       {data.transactions.length ? (
                         <TransactionList
+                          today={today}
+                          plan={data.plan}
                           transactions={[...data.transactions]
                             .sort(
                               (a, b) =>

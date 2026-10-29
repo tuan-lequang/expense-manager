@@ -6,6 +6,7 @@ import {
   dayCount,
   isDate,
   money,
+  netSpending,
   niceDate,
   planForecast,
   type Snapshot,
@@ -27,21 +28,21 @@ export default function Reports({
   const [customStart, setCustomStart] = useState(plan.startDate);
   const [customEnd, setCustomEnd] = useState(today < plan.endDate ? today : plan.endDate);
   const [showTable, setShowTable] = useState(false);
-  const end = range === 'custom' ? customEnd : today < plan.endDate ? today : plan.endDate;
+  const end =
+    range === 'custom'
+      ? customEnd
+      : range === 'period' && today > plan.endDate
+        ? plan.endDate
+        : today;
   const candidate =
     range === 'period'
       ? plan.startDate
       : range === 'custom'
         ? customStart
         : addDays(end, range === '7' ? -6 : -29);
-  const start = candidate < plan.startDate ? plan.startDate : candidate;
+  const start = candidate;
   const invalid =
-    !isDate(start) ||
-    !isDate(end) ||
-    start > end ||
-    (range === 'custom' && customStart < plan.startDate) ||
-    end > today ||
-    end > plan.endDate;
+    !isDate(start) || !isDate(end) || start > end || end > today || dayCount(start, end) > 3660;
   const transactions = invalid
     ? []
     : data.transactions.filter((t) => t.date >= start && t.date <= end);
@@ -57,7 +58,12 @@ export default function Reports({
     ? []
     : Array.from({ length: dayCount(chartStart, end) }, (_, i) => {
         const date = addDays(chartStart, i);
-        return { date, ...budgetForDay(plan, data.transactions, date) };
+        const budget = budgetForDay(plan, data.transactions, date);
+        return {
+          date,
+          spent: netSpending(data.transactions.filter((t) => t.date === date)),
+          allowance: budget.active ? budget.allowance : null,
+        };
       });
   return (
     <>
@@ -83,7 +89,6 @@ export default function Reports({
             Từ ngày
             <input
               type="date"
-              min={plan.startDate}
               max={end}
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
@@ -94,7 +99,7 @@ export default function Reports({
             <input
               type="date"
               min={customStart}
-              max={today < plan.endDate ? today : plan.endDate}
+              max={today}
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
             />
@@ -103,7 +108,8 @@ export default function Reports({
       )}
       {invalid ? (
         <p className="form-error" role="alert">
-          Chọn khoảng ngày hợp lệ trong thời gian kế hoạch, đến tối đa hôm nay.
+          Chọn khoảng ngày hợp lệ tối đa 3.660 ngày, tính đến hôm nay. Giao dịch tương lai được xem
+          ở tab Giao dịch.
         </p>
       ) : (
         <>
@@ -189,8 +195,8 @@ export default function Reports({
                       {rows.map((row) => (
                         <tr key={row.date}>
                           <td>{niceDate(row.date)}</td>
-                          <td>{money(row.todayNet)}</td>
-                          <td>{money(row.allowance)}</td>
+                          <td>{money(row.spent)}</td>
+                          <td>{row.allowance === null ? 'Ngoài kỳ' : money(row.allowance)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -233,8 +239,8 @@ export default function Reports({
                   : `Nếu giữ mức chi trung bình từ đầu kế hoạch, cuối kỳ bạn ${forecast >= 0 ? 'có thể còn' : 'có thể thiếu'} ${money(Math.abs(forecast))}.`}
               </p>
               <small>
-                Đây là ước tính từ dữ liệu đã ghi, chưa bao gồm các khoản chi tương lai bạn chưa
-                nhập.
+                Đây là ước tính từ giao dịch thực tế thuộc kỳ ngân sách; chưa cộng/trừ các giao dịch
+                dự kiến.
               </small>
             </div>
           </section>

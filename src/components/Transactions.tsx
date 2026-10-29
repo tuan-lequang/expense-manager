@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { categories, money, type Snapshot, type Transaction } from '../lib/model';
+import { categories, money, netSpending, type Snapshot, type Transaction } from '../lib/model';
 import { EmptyState, TransactionList } from './Shared';
 
 export default function Transactions({
@@ -47,9 +47,9 @@ export default function Transactions({
     setter(value);
     setPage(0);
   };
-  const net = filtered
-    .filter((t) => t.kind !== 'topup')
-    .reduce((s, t) => s + (t.kind === 'expense' ? t.amount : -t.amount), 0);
+  const net = netSpending(filtered.filter((t) => t.date <= today));
+  const scheduled = filtered.filter((t) => t.date > today);
+  const scheduledNet = netSpending(scheduled);
   return (
     <section className="panel transactions-panel">
       <div className="transaction-filters">
@@ -91,8 +91,7 @@ export default function Transactions({
           Từ ngày
           <input
             type="date"
-            min={data.plan!.startDate}
-            max={to || today}
+            max={to || undefined}
             value={from}
             onChange={(e) => update(setFrom, e.target.value)}
           />
@@ -101,8 +100,7 @@ export default function Transactions({
           Đến ngày
           <input
             type="date"
-            min={from || data.plan!.startDate}
-            max={today}
+            min={from || undefined}
             value={to}
             onChange={(e) => update(setTo, e.target.value)}
           />
@@ -127,11 +125,18 @@ export default function Transactions({
       <div className="list-summary">
         <span>{filtered.length} giao dịch</span>
         <span>
-          Chi ròng: <strong>{money(net)}</strong>
+          Chi ròng thực tế: <strong>{money(net)}</strong>
         </span>
+        {scheduled.length > 0 && (
+          <span>
+            {scheduled.length} dự kiến · chi ròng {money(scheduledNet)}
+          </span>
+        )}
       </div>
       {filtered.length ? (
         <TransactionList
+          today={today}
+          plan={data.plan!}
           transactions={filtered.slice(safePage * 15, safePage * 15 + 15)}
           onEdit={onEdit}
           onDelete={onDelete}

@@ -3,13 +3,11 @@ import { ArrowUpFromLine } from 'lucide-react';
 import { parseBackup, type Snapshot } from '../lib/model';
 
 export default function BackupImport({
-  today,
   onImport,
   notify,
   disabled = false,
   compact = false,
 }: {
-  today: string;
   onImport: (data: Snapshot) => void;
   notify: (message: string) => void;
   disabled?: boolean;
@@ -22,7 +20,7 @@ export default function BackupImport({
     if (!file || disabled) return;
     try {
       if (file.size > 10 * 1024 * 1024) throw new Error('Tệp sao lưu tối đa 10 MB.');
-      onImport(parseBackup(await file.text(), today));
+      onImport(parseBackup(await file.text()));
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Không đọc được tệp.');
     }
